@@ -20,39 +20,6 @@ import {
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fetchGoldPriceApi } from "@/api/auth";
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken } from 'firebase/messaging';
-
-type RouteParams = {
-  amount: string;
-};
-
-type GoldSavingRouteProp = RouteProp<{ params: RouteParams }, 'params'>;
-
-// Firebase configuration
-const firebaseConfig = {
-  // Add your Firebase config here
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 export default function GoldSaving() {
   const route = useRoute<GoldSavingRouteProp>();
