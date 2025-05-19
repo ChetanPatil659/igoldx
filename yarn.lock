@@ -3050,6 +3050,11 @@ https-proxy-agent@^7.0.5:
     agent-base "^7.1.2"
     debug "4"
 
+hyper-sdk-react@^3.0.48:
+  version "3.0.48"
+  resolved "https://registry.yarnpkg.com/hyper-sdk-react/-/hyper-sdk-react-3.0.48.tgz#d578e568f2856d9c4adfc06ca34b45e0b8d98c15"
+  integrity sha512-6X3/wWFpk1fAhaIogLfpjZ42W01OJMK54pgRv3G4HzW3t8St90zJWafhU/XdYHAXXqsXcN91PA0nOlakX2uUsg==
+
 ieee754@^1.1.13:
   version "1.2.1"
   resolved "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz"

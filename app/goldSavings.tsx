@@ -21,6 +21,12 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fetchGoldPriceApi } from "@/api/auth";
 
+type GoldSavingRouteProp = RouteProp<{
+  GoldSaving: {
+    amount?: string;
+  };
+}, 'GoldSaving'>;
+
 export default function GoldSaving() {
   const route = useRoute<GoldSavingRouteProp>();
   const data = route.params;
@@ -35,7 +41,8 @@ export default function GoldSaving() {
   // Timer countdown effect
   useEffect(() => {
     if (timeLeft <= 0) {
-      navigation.goBack();
+      fetchGoldPrice();
+      setTimeLeft(60);
       return;
     };
 
@@ -46,81 +53,15 @@ export default function GoldSaving() {
     return () => clearTimeout(timer);
   }, [timeLeft]);
 
-  useEffect(() => {
-    const fetchGoldPrice = async () => {
-      const res = await fetchGoldPriceApi();
-      console.log(res);
-      if (res.success) {
-        setGoldPrice(res?.data?.current_price);
-      }
-    };
-    fetchGoldPrice();
-  }, []);
-
-  useEffect(() => {
-    registerForPushNotificationsAsync();
-  }, []);
-
-  async function registerForPushNotificationsAsync() {
-    let token;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-
-    if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== 'granted') {
-        Alert.alert('Failed to get push token for push notification!');
-        return;
-      }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-      
-      // Get FCM token
-      if (Platform.OS === 'android') {
-        const messaging = getMessaging(app);
-        const fcmToken = await getToken(messaging);
-        console.log('FCM Token:', fcmToken);
-      }
-    } else {
-      Alert.alert('Must use physical device for Push Notifications');
-    }
-
-    setExpoPushToken(token);
-  }
-
-  // Function to send test notification
-  const sendTestNotification = async () => {
-    try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Accept-encoding': 'gzip, deflate',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: expoPushToken,
-          sound: 'default',
-          title: 'Gold Price Update',
-          body: 'Gold price has changed! Check it out.',
-          data: { someData: 'goes here' },
-        }),
-      });
-    } catch (error) {
-      console.error('Error sending notification:', error);
+  const fetchGoldPrice = async () => {
+    const res = await fetchGoldPriceApi();
+    if (res.success) {
+      setGoldPrice(res?.data);
     }
   };
+  useEffect(() => {
+    fetchGoldPrice();
+  }, []);
 
   // Format time as MM:SS
   const formatTime = (seconds: any) => {
@@ -300,7 +241,7 @@ export default function GoldSaving() {
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>LIVE</Text>
         </View>
-        <Text style={styles.livePrice}>Live Price: ₹9,035.00/gm</Text>
+        <Text style={styles.livePrice}>Live Price: ₹{goldPrice?.current_price?.toFixed(2)}/gm</Text>
         <Text style={styles.validTime}>Valid For: {formatTime(timeLeft)}</Text>
       </View>
 
@@ -342,14 +283,6 @@ export default function GoldSaving() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Add this somewhere in your UI to test notifications */}
-      <TouchableOpacity 
-        style={styles.testNotificationButton}
-        onPress={sendTestNotification}
-      >
-        <Text style={styles.testNotificationText}>Test Notification</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
