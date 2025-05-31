@@ -13,7 +13,7 @@ import {
   Dimensions,
 } from "react-native";
 
-const {width, height} = Dimensions.get('screen')
+const { width, height } = Dimensions.get("screen");
 
 const OtpInputScreen = ({
   phoneNumber,
@@ -47,7 +47,7 @@ const OtpInputScreen = ({
     }, 100);
   }, []);
 
-  // Handle input change
+  // Handle input change-
   const handleOtpChange = (value, index) => {
     // Only allow digits
     if (!/^\d*$/.test(value)) return;
@@ -62,10 +62,10 @@ const OtpInputScreen = ({
     }
 
     // Auto submit when all digits are entered
-    if (index === 3 && value && !newOtp.includes("")) {
-      Keyboard.dismiss();
-      handleVerify();
-    }
+    // if (index === 3 && value && !newOtp.includes("")) {
+    //   Keyboard.dismiss();
+    //   handleVerify();
+    // }
   };
 
   // Handle backspace key
@@ -89,13 +89,13 @@ const OtpInputScreen = ({
 
   // Handle OTP paste functionality
   const handleOtpPaste = (pastedText) => {
-    const cleanedText = pastedText.replace(/\D/g, "").slice(0, 6);
+    const cleanedText = pastedText.replace(/\D/g, "").slice(0, 4);
     if (cleanedText.length === 0) return;
 
     const newOtp = [...otp];
 
     for (let i = 0; i < cleanedText.length; i++) {
-      if (i < 6) {
+      if (i < 4) {
         newOtp[i] = cleanedText.charAt(i);
       }
     }
@@ -106,11 +106,11 @@ const OtpInputScreen = ({
     const nextEmptyIndex = newOtp.findIndex((digit) => digit === "");
     if (nextEmptyIndex !== -1) {
       inputRefs.current[nextEmptyIndex].focus();
-    } else if (inputRefs.current[3]) {
-      inputRefs.current[3].focus();
+    } else if (inputRefs.current[4]) {
+      inputRefs.current[4].focus();
       // Auto submit when all filled from paste
-      Keyboard.dismiss();
-      setTimeout(() => handleVerify(), 300);
+      // Keyboard.dismiss();
+      // setTimeout(() => handleVerify(), 300);
     }
   };
 

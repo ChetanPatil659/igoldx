@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -20,7 +20,8 @@ import {
 } from "@expo/vector-icons";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { fetchTransactionApi } from "@/api/auth";
+import { useSelector } from "react-redux";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -76,7 +77,7 @@ export default function Transaction() {
     </View>
   );
 
-  const transactions = [
+  const transaction = [
     {
       id: "1",
       type: "Daily Saving",
@@ -133,6 +134,9 @@ export default function Transaction() {
     },
   ];
 
+  const [transactions, setTransactions] = useState([]);
+  const token = useSelector((state: any) => state.token.token);
+
   const getIconStyle = (type) => {
     if (type === "Weekly Magic Reward") {
       return { backgroundColor: "#4a3b76" };
@@ -143,6 +147,15 @@ export default function Transaction() {
     }
   };
 
+  const fetchTransactions = async () => {
+    const res = await fetchTransactionApi(token);
+    if (res.success) {
+      setTransactions(res?.data?.transactions);
+    }
+  };
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
   const TransactionItem = ({ item }: any) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionLeft}>
@@ -151,12 +164,12 @@ export default function Transaction() {
         </View>
         <View>
           <Text style={styles.transactionType}>{item.type}</Text>
-          <Text style={styles.goldAmount}>{item.goldAmount}</Text>
+          <Text style={styles.goldAmount}>{item.gold_amount} gms</Text>
         </View>
       </View>
       <View>
-        <Text style={styles.amount}>{item.amount}</Text>
-        <Text style={styles.date}>{item.date}</Text>
+        <Text style={styles.amount}>₹{item.buy_price}</Text>
+        <Text style={styles.date}>{item.tx_date}</Text>
       </View>
     </View>
   );
@@ -180,7 +193,7 @@ export default function Transaction() {
         <FlatList
           data={transactions}
           renderItem={({ item }) => <TransactionItem item={item} />}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.tx_id}
           style={{ paddingHorizontal: 10 }}
         />
       </SafeAreaView>

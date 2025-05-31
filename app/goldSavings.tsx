@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import {
   Ionicons,
@@ -19,24 +20,44 @@ import {
 } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fetchGoldPriceApi } from "@/api/auth";
+import { buyGoldApi, buyGoldConfirmApi, fetchGoldPriceApi } from "@/api/auth";
+import { initiatePayment } from "@/helper/razorpay";
+import { sendTestNotificationWithImage } from "@/hooks/usePushNotifications";
+import { useSelector } from "react-redux";
 
-type GoldSavingRouteProp = RouteProp<{
-  GoldSaving: {
-    amount?: string;
-  };
-}, 'GoldSaving'>;
+interface GoldPrice {
+  current_price: number;
+  rate_id: number;
+  applicable_tax: number;
+}
+
+type GoldSavingRouteProp = RouteProp<
+  {
+    GoldSaving: {
+      amount?: string;
+    };
+  },
+  "GoldSaving"
+>;
 
 export default function GoldSaving() {
   const route = useRoute<GoldSavingRouteProp>();
   const data = route.params;
   const [amount, setAmount] = useState(data?.amount || "0");
   const [gramAmount, setGramAmount] = useState("0");
-  const [goldPrice, setGoldPrice] = useState(0);
+  const [goldPrice, setGoldPrice] = useState<GoldPrice | null>(null);
   const [activeTab, setActiveTab] = useState("rupees");
   const [timeLeft, setTimeLeft] = useState(60);
-  const navigation = useNavigation();  
-  const [expoPushToken, setExpoPushToken] = useState('');
+  const [isGramsInput, setIsGramsInput] = useState(false);
+  const [isGramsCalculating, setIsGramsCalculating] = useState(false);
+  const navigation = useNavigation();
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isAutoPay, setIsAutoPay] = useState(false);
+  const [autoPayFrequency, setAutoPayFrequency] = useState<
+    "daily" | "weekly" | "monthly"
+  >("monthly");
+
+  const token = useSelector((state: any) => state.token.token);
 
   // Timer countdown effect
   useEffect(() => {
@@ -44,7 +65,7 @@ export default function GoldSaving() {
       fetchGoldPrice();
       setTimeLeft(60);
       return;
-    };
+    }
 
     const timer = setTimeout(() => {
       setTimeLeft(timeLeft - 1);
@@ -58,11 +79,11 @@ export default function GoldSaving() {
     if (res.success) {
       setGoldPrice(res?.data);
     }
+    await sendTestNotificationWithImage();
   };
   useEffect(() => {
     fetchGoldPrice();
   }, []);
-
   // Format time as MM:SS
   const formatTime = (seconds: any) => {
     const mins = Math.floor(seconds / 60);
@@ -73,14 +94,82 @@ export default function GoldSaving() {
   };
 
   const handleAmountSelect = (value: string) => {
-    setAmount(value);
-    // Calculate gram amount based on price
+    if (!goldPrice?.current_price) return;
+
+    // Remove any non-numeric characters except decimal point
+    const sanitizedValue = value.replace(/[^0-9.]/g, "");
+
     if (activeTab === "rupees") {
-      const grams = (parseInt(value) / goldPrice).toFixed(4);
+      setIsGramsInput(false);
+      setAmount(sanitizedValue);
+      // Calculate gram amount based on price
+      const grams = (
+        parseFloat(sanitizedValue || "0") /
+        (goldPrice.current_price * 1.03)
+      ).toFixed(4);
       setGramAmount(grams);
     } else if (activeTab === "grams") {
-      const rupees = (parseInt(value) * goldPrice).toFixed(2);
+      setIsGramsInput(true);
+      setGramAmount(sanitizedValue);
+      // Calculate rupees amount based on price
+      setIsGramsCalculating(true);
+      const rupees = (
+        parseFloat(sanitizedValue || "0") *
+        (goldPrice.current_price * 1.03)
+      ).toFixed(2);
       setAmount(rupees);
+      setIsGramsCalculating(false);
+    }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === "grams") {
+      setIsGramsInput(true);
+    } else {
+      setIsGramsInput(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    try {
+      setIsProcessingPayment(true);
+
+      console.log(gramAmount);
+
+      const res = await buyGoldApi(
+        token,
+        goldPrice?.rate_id,
+        parseFloat(gramAmount),
+        parseFloat(amount)
+      );
+
+      console.log(res, "res");
+
+      Alert.alert(
+        "Confirm Purchase",
+        `Are you sure you want to purchase ${gramAmount} grams of gold for ₹${amount}?`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Confirm",
+            onPress: async () => {
+              const paymentResult = await buyGoldConfirmApi(
+                token,
+                res?.data?.tx_id
+              );
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Payment error:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -109,7 +198,7 @@ export default function GoldSaving() {
         <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tab, activeTab === "rupees" && styles.activeTab]}
-            onPress={() => setActiveTab("rupees")}
+            onPress={() => handleTabChange("rupees")}
           >
             <Text
               style={[
@@ -122,7 +211,7 @@ export default function GoldSaving() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === "grams" && styles.activeTab]}
-            onPress={() => setActiveTab("grams")}
+            onPress={() => handleTabChange("grams")}
           >
             <Text
               style={[
@@ -138,14 +227,18 @@ export default function GoldSaving() {
         {/* Amount Input */}
         <View style={styles.amountContainer}>
           <View style={styles.amountInputContainer}>
-            <Text style={styles.rupeeSymbol}>₹</Text>
+            <Text style={styles.rupeeSymbol}>{isGramsInput ? "gm" : "₹"}</Text>
             <TextInput
               style={styles.amountInput}
-              value={amount}
+              value={isGramsInput ? gramAmount : amount}
               onChangeText={(text) => handleAmountSelect(text)}
               keyboardType="numeric"
+              placeholder={isGramsInput ? "Enter grams" : "Enter amount"}
+              placeholderTextColor="#666"
             />
-            <Text style={styles.gramAmount}>{gramAmount ? gramAmount : 0} gm</Text>
+            <Text style={styles.gramAmount}>
+              {isGramsInput ? `₹${amount}` : `${gramAmount} gm`}
+            </Text>
           </View>
         </View>
 
@@ -196,8 +289,91 @@ export default function GoldSaving() {
           </Text>
         </View>
 
+        {/* Auto Pay Option */}
+        <View style={styles.autoPayContainer}>
+          <View style={styles.autoPayRow}>
+            <View style={styles.autoPayLeft}>
+              <MaterialIcons name="autorenew" size={20} color="#FFD700" />
+              <Text style={styles.autoPayText}>Auto Pay</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.autoPayToggle,
+                isAutoPay && styles.autoPayToggleActive,
+              ]}
+              onPress={() => setIsAutoPay(!isAutoPay)}
+            >
+              <View
+                style={[
+                  styles.toggleCircle,
+                  isAutoPay && styles.toggleCircleActive,
+                ]}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {isAutoPay && (
+            <View style={styles.frequencyRow}>
+              <Text style={styles.frequencyLabel}>Frequency:</Text>
+              <View style={styles.frequencyButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.freqButton,
+                    autoPayFrequency === "daily" && styles.freqButtonActive,
+                  ]}
+                  onPress={() => setAutoPayFrequency("daily")}
+                >
+                  <Text
+                    style={[
+                      styles.freqButtonText,
+                      autoPayFrequency === "daily" &&
+                        styles.freqButtonTextActive,
+                    ]}
+                  >
+                    Daily
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.freqButton,
+                    autoPayFrequency === "weekly" && styles.freqButtonActive,
+                  ]}
+                  onPress={() => setAutoPayFrequency("weekly")}
+                >
+                  <Text
+                    style={[
+                      styles.freqButtonText,
+                      autoPayFrequency === "weekly" &&
+                        styles.freqButtonTextActive,
+                    ]}
+                  >
+                    Weekly
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.freqButton,
+                    autoPayFrequency === "monthly" && styles.freqButtonActive,
+                  ]}
+                  onPress={() => setAutoPayFrequency("monthly")}
+                >
+                  <Text
+                    style={[
+                      styles.freqButtonText,
+                      autoPayFrequency === "monthly" &&
+                        styles.freqButtonTextActive,
+                    ]}
+                  >
+                    Monthly
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Available Offers */}
-        <View style={styles.offersSection}>
+        {/* <View style={styles.offersSection}>
           <Text style={styles.sectionTitle}>Available Offers</Text>
 
           <View style={styles.offerCard}>
@@ -232,7 +408,7 @@ export default function GoldSaving() {
             <Text style={styles.viewAllOffersText}>View all offers</Text>
             <Ionicons name="chevron-forward" size={16} color="#a8a8a8" />
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
 
       {/* Live Price Ticker */}
@@ -241,7 +417,9 @@ export default function GoldSaving() {
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>LIVE</Text>
         </View>
-        <Text style={styles.livePrice}>Live Price: ₹{goldPrice?.current_price?.toFixed(2)}/gm</Text>
+        <Text style={styles.livePrice}>
+          Live Price: ₹{goldPrice?.current_price?.toFixed(2)}/gm
+        </Text>
         <Text style={styles.validTime}>Valid For: {formatTime(timeLeft)}</Text>
       </View>
 
@@ -249,7 +427,7 @@ export default function GoldSaving() {
       <View style={styles.paymentContainer}>
         <View style={styles.totalContainer}>
           <View>
-            <Text style={styles.totalAmount}>₹200</Text>
+            <Text style={styles.totalAmount}>₹{amount}</Text>
             <Text style={styles.taxInfo}>Incl. (GST)</Text>
           </View>
           <TouchableOpacity style={styles.breakdownButton}>
@@ -276,10 +454,18 @@ export default function GoldSaving() {
           </View>
 
           <TouchableOpacity
-            // onPress={processCardPayment}
-            style={styles.buyButton}
+            onPress={handlePayment}
+            style={[
+              styles.buyButton,
+              isProcessingPayment && styles.buyButtonDisabled,
+            ]}
+            disabled={isProcessingPayment}
           >
-            <Text style={styles.buyButtonText}>Buy Now</Text>
+            {isProcessingPayment ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buyButtonText}>Buy Now</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -638,14 +824,94 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   testNotificationButton: {
-    backgroundColor: '#6b46c1',
+    backgroundColor: "#6b46c1",
     padding: 10,
     borderRadius: 5,
     marginTop: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   testNotificationText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
+  },
+  buyButtonDisabled: {
+    opacity: 0.7,
+  },
+  autoPayContainer: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: "#2a2642",
+    borderRadius: 10,
+    padding: 15,
+  },
+  autoPayRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  autoPayLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  autoPayText: {
+    color: "white",
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  autoPayToggle: {
+    width: 40,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#3a3a4c",
+    padding: 2,
+  },
+  autoPayToggleActive: {
+    backgroundColor: "#6b46c1",
+  },
+  toggleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "white",
+  },
+  toggleCircleActive: {
+    transform: [{ translateX: 16 }],
+  },
+  frequencyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#3a3a4c",
+  },
+  frequencyLabel: {
+    color: "#a8a8a8",
+    fontSize: 14,
+    marginRight: 10,
+  },
+  frequencyButtons: {
+    flexDirection: "row",
+    flex: 1,
+  },
+  freqButton: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: "#3a3a4c",
+    marginHorizontal: 5,
+    alignItems: "center",
+  },
+  freqButtonActive: {
+    backgroundColor: "#6b46c1",
+  },
+  freqButtonText: {
+    color: "#a8a8a8",
+    fontSize: 14,
+  },
+  freqButtonTextActive: {
+    color: "white",
+    fontWeight: "bold",
   },
 });

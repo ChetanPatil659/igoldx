@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -23,8 +23,14 @@ import GoldCoin from "@/components/ui/GoldCoin";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+} from "react-native-reanimated";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { fetchGoldPriceApi } from "@/api/auth";
 
 const { width } = Dimensions.get("window");
 
@@ -32,20 +38,28 @@ const Home = () => {
   const [isActiveSavings, setIsActiveSavings] = React.useState(0);
   const navigation = useNavigation<any>();
   const userState = useSelector((state: any) => state?.user);
-  const user = userState?.user || { name: 'User' }; // Provide default value
-  let amountMap = ['10', '20', '50', '100'];
+  const user = userState?.user || { name: "User" }; // Provide default value
+  let amountMap = ["10", "20", "50", "100"];
   const [amount, setAmount] = useState(amountMap[0]);
   // Animation state for GoldCoin drag
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
   const dragWidth = width - 120; // 120 = coin + locker + paddings
+  const [goldPrice, setGoldPrice] = useState();
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateX: translateX.value }, { scale: scale.value }],
   }));
+
+  const fetchGoldPrice = async () => {
+    const res = await fetchGoldPriceApi();
+    if (res.success) {
+      setGoldPrice(res?.data);
+    }
+  };
+  useEffect(() => {
+    fetchGoldPrice();
+  }, []);
 
   const panGesture = Gesture.Pan()
     .onUpdate((event: any) => {
@@ -57,15 +71,19 @@ const Home = () => {
       const x = event.translationX;
       if (x > dragWidth * 0.8) {
         scale.value = withTiming(0.5, { duration: 200 });
-        translateX.value = withTiming(dragWidth, { duration: 200 }, (finished) => {
-          if (finished) {
-            runOnJS(navigation.navigate)("GoldSavings", {
-              amount: amount,
-            });
-            translateX.value = 0;
-            scale.value = 1;
+        translateX.value = withTiming(
+          dragWidth,
+          { duration: 200 },
+          (finished) => {
+            if (finished) {
+              runOnJS(navigation.navigate)("GoldSavings", {
+                amount: amount,
+              });
+              translateX.value = 0;
+              scale.value = 1;
+            }
           }
-        });
+        );
       } else {
         translateX.value = withTiming(0);
         scale.value = withTiming(1);
@@ -75,8 +93,14 @@ const Home = () => {
   // Add error boundary
   if (!userState) {
     return (
-      <SafeAreaView edges={["top"]} style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: 'white' }}>Loading...</Text>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ color: "white" }}>Loading...</Text>
       </SafeAreaView>
     );
   }
@@ -85,52 +109,54 @@ const Home = () => {
     <SafeAreaView edges={["top"]} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1e1a2e" />
       {
-      <ScrollView style={{flex: 1}}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => {
-              //@ts-ignore
-              navigation.navigate("Account");
-            }}
-            style={styles.profileButton}
-          >
-            <Ionicons name="person-outline" size={22} color="#fff" />
-            {/* <Text>Hello</Text> */}
-          </TouchableOpacity>
-
-          <View style={styles.notificationContainer}>
-            <LinearGradient
-              colors={["#2D1A4A", "#1D0F30"]}
-              style={styles.notificationBanner}
-            >
-              <FontAwesome5 name="chart-line" size={16} color="#FFD700" />
-              <Text style={styles.notificationText}>Gold Buy Price</Text>
-              <Text style={styles.notificationHighlight}>Dropped</Text>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.headerRightIcons}>
+        <ScrollView style={{ flex: 1 }}>
+          {/* Header Section */}
+          <View style={styles.header}>
             <TouchableOpacity
-              style={styles.iconButton}
               onPress={() => {
                 //@ts-ignore
-                navigation.navigate("Notifications");
+                navigation.navigate("Account");
               }}
+              style={styles.profileButton}
             >
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
+              <Ionicons name="person-outline" size={22} color="#fff" />
               {/* <Text>Hello</Text> */}
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Greeting Section */}
-        <View style={styles.greetingSection}>
-          <View style={{flexDirection: "row", alignItems: "flex-end", gap: 10}}>
-            <Text style={styles.helloText}>Hello,</Text>
-            <Text style={styles.nameText}>{user?.name}</Text>
+            <View style={styles.notificationContainer}>
+              <LinearGradient
+                colors={["#2D1A4A", "#1D0F30"]}
+                style={styles.notificationBanner}
+              >
+                <FontAwesome5 name="chart-line" size={16} color="#FFD700" />
+                <Text style={styles.notificationText}>Gold Buy Price</Text>
+                <Text style={styles.notificationHighlight}>Dropped</Text>
+              </LinearGradient>
+            </View>
+
+            <View style={styles.headerRightIcons}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => {
+                  //@ts-ignore
+                  navigation.navigate("Notifications");
+                }}
+              >
+                <Ionicons name="notifications-outline" size={22} color="#fff" />
+                {/* <Text>Hello</Text> */}
+              </TouchableOpacity>
+            </View>
           </View>
-          {/* <View style={styles.cardsContainer}>
+
+          {/* Greeting Section */}
+          <View style={styles.greetingSection}>
+            <View
+              style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}
+            >
+              <Text style={styles.helloText}>Hello,</Text>
+              <Text style={styles.nameText}>{user?.name}</Text>
+            </View>
+            {/* <View style={styles.cardsContainer}>
             <Image
               source={require("@/assets/images/magicHat.png")}
               style={styles.cardIcon}
@@ -138,372 +164,444 @@ const Home = () => {
             <Text style={styles.cardsText}>You got</Text>
             <Text style={styles.cardsCount}>4/5 cards</Text>
           </View> */}
-        </View>
-
-        {/* Savings Card */}
-
-
-        <View style={{ marginTop: 20, alignItems: "center", width: width }}>
-          <YourFirstGoldCoin />
-          <View style={styles.savingsCardContainer}>
-            <View
-              // colors={["#3A1F65", "#5624A0"]}
-              style={styles.savingsCard}
-            >
-              <LinearGradient
-                colors={["#5624A0", "#3A1F65"]}
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#FF6B00",
-                  padding: 15,
-                  borderRadius: 20,
-                  overflow: "hidden",
-                }}
-              >
-                <View style={styles.savingsHeader}>
-                  <Text style={styles.savingsTitle}>Savings in Gold</Text>
-                </View>
-                <TouchableOpacity style={styles.detailsButton}>
-                  <Text style={styles.detailsText}>See Details</Text>
-                  <Ionicons name="chevron-forward" size={12} color="#fff" />
-                </TouchableOpacity>
-
-                <View style={styles.savingsContent}>
-                  <View style={styles.amountContainer}>
-                    <Text style={styles.currencySymbol}>₹</Text>
-                    <Text style={styles.amountText}>{user?.balance}</Text>
-                    <Text style={styles.gramText}>₹{user?.sellableBalance}</Text>
-                  </View>
-
-                  <View style={styles.goldImageContainer}>
-                    <Image
-                      source={require("@/assets/images/goldBox.png")}
-                      style={styles.goldImage}
-                      onError={(e) => console.log('Image loading error:', e.nativeEvent.error)}
-                      defaultSource={require("@/assets/images/goldBox.png")}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.actionButtonsContainer}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      //@ts-ignore
-                      navigation.navigate("withdrawlScreen");
-                    }}
-                    style={styles.withdrawButton}
-                  >
-                    <Text style={styles.withdrawText}>WITHDRAW</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={() => {
-                      //@ts-ignore
-                      navigation.navigate("GoldSavings");
-                    }}
-                  >
-                    <Feather name="zap" size={16} color="#3A1F65" />
-                    <Text style={styles.saveText}>Save Instantly</Text>
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.shieldContainer}>
-              <LinearGradient
-                colors={["rgba(0,0,0,0.1)", "#FFA500"]}
-                start={{ x: 0, y: 0 }} // Left side
-                end={{ x: 1, y: 0 }} // Right side
-                style={styles.shieldGradientLine}
-              />
-
-              <LinearGradient
-                colors={["#FFD700", "#FFA500"]}
-                style={styles.shieldGradient}
-              >
-                <FontAwesome5 name="shield-alt" size={18} color="#3A1F65" />
-              </LinearGradient>
-              <LinearGradient
-                colors={["#FFA500", "rgba(0,0,0,0.1)"]}
-                start={{ x: 0, y: 0 }} // Left side
-                end={{ x: 1, y: 0 }} // Right side
-                style={styles.shieldGradientLine}
-              />
-            </View>
           </View>
-        </View>
 
-        
-        
+          {/* Savings Card */}
 
-        <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
-            Quick to Save
-          </Text>
-          <LinearGradient
-            colors={["#383252", "#4E466E"]}
-            start={{ x: 0, y: 1 }}
-            end={{ x: 0, y: 0 }}
-            style={{
-              marginTop: 10,
-              width: "100%",
-              borderRadius: 10,
-              padding: 15,
-            }}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-            >
-              <Image
-                source={require("@/assets/images/goldCoins.png")}
-                style={{ width: 25, height: 25 }}
-              />
-              <Text
-                style={{
-                  color: "rgba(255, 255, 255, 0.8)",
-                  fontWeight: "bold",
-                }}
+          <View style={{ marginTop: 20, alignItems: "center", width: width }}>
+            <YourFirstGoldCoin />
+            <View style={styles.savingsCardContainer}>
+              <View
+                // colors={["#3A1F65", "#5624A0"]}
+                style={styles.savingsCard}
               >
-                Swipe to Save in gold
-              </Text>
-            </View>
-            <Text style={{ color: "rgba(255, 255, 255, 0.5)" }}>
-              Save ₹{amount} in gold instantly
-            </Text>
-
-            <View
-              style={{
-                marginTop: 20,
-                height: 50,
-                width: "100%",
-                backgroundColor: "#2E2B42",
-                borderRadius: 25,
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexDirection: "row",
-                paddingRight: 15,
-              }}
-            >
-              <GestureDetector gesture={panGesture}>
-                <Animated.View style={[animatedStyle, { zIndex: 2 }]}>
-                  <GoldCoin amount={amount}/>
-                </Animated.View>
-              </GestureDetector>
-              <Image
-                source={require("@/assets/images/locker.png")}
-                style={{ width: 40, height: 40 }}
-              />
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginTop: 20,
-                width: "100%",
-                gap: 4,
-              }}
-            >
-              {amountMap.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => setAmount(item)}
+                <LinearGradient
+                  colors={["#5624A0", "#3A1F65"]}
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: 40,
-                    backgroundColor: "#2E2B42",
-                    borderRadius: 5,
-                    flex: 1,
-                    borderColor: "#5C38CC",
                     borderWidth: 1,
+                    borderColor: "#FF6B00",
+                    padding: 15,
+                    borderRadius: 20,
+                    overflow: "hidden",
                   }}
                 >
-                  <Text style={{ color: "white" }}>₹{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </LinearGradient>
-        </View>
+                  <View style={styles.savingsHeader}>
+                    <Text style={styles.savingsTitle}>Savings in Gold</Text>
+                  </View>
+                  <TouchableOpacity style={styles.detailsButton}>
+                    <Text style={styles.detailsText}>See Details</Text>
+                    <Ionicons name="chevron-forward" size={12} color="#fff" />
+                  </TouchableOpacity>
 
-        <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
-            Automate Your Savings
-          </Text>
-          <View
-            style={{
-              marginTop: 10,
-              backgroundColor: "#ebf2fa",
-              borderRadius: 15,
-            }}
-          >
-            <View>
+                  <View style={styles.savingsContent}>
+                    <View style={styles.amountContainer}>
+                      <Text style={styles.currencySymbol}>₹</Text>
+                      <Text style={styles.amountText}>
+                        {(user?.balance * goldPrice?.current_price).toFixed(
+                          2
+                        ) ?? 0}
+                      </Text>
+                      <Text style={styles.gramText}>
+                        {parseFloat(user?.sellableBalance).toFixed(2) ?? 0}gms
+                      </Text>
+                    </View>
+
+                    <View style={styles.goldImageContainer}>
+                      <Image
+                        source={require("@/assets/images/goldBox.png")}
+                        style={styles.goldImage}
+                        onError={(e) =>
+                          console.log(
+                            "Image loading error:",
+                            e.nativeEvent.error
+                          )
+                        }
+                        defaultSource={require("@/assets/images/goldBox.png")}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.actionButtonsContainer}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        //@ts-ignore
+                        navigation.navigate("withdrawlScreen");
+                      }}
+                      style={styles.withdrawButton}
+                    >
+                      <Text style={styles.withdrawText}>WITHDRAW</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.saveButton}
+                      onPress={() => {
+                        //@ts-ignore
+                        navigation.navigate("GoldSavings");
+                      }}
+                    >
+                      <Feather name="zap" size={16} color="#3A1F65" />
+                      <Text style={styles.saveText}>Save Instantly</Text>
+                    </TouchableOpacity>
+                  </View>
+                </LinearGradient>
+              </View>
+
+              <View style={styles.shieldContainer}>
+                <LinearGradient
+                  colors={["rgba(0,0,0,0.1)", "#FFA500"]}
+                  start={{ x: 0, y: 0 }} // Left side
+                  end={{ x: 1, y: 0 }} // Right side
+                  style={styles.shieldGradientLine}
+                />
+
+                <LinearGradient
+                  colors={["#FFD700", "#FFA500"]}
+                  style={styles.shieldGradient}
+                >
+                  <FontAwesome5 name="shield-alt" size={18} color="#3A1F65" />
+                </LinearGradient>
+                <LinearGradient
+                  colors={["#FFA500", "rgba(0,0,0,0.1)"]}
+                  start={{ x: 0, y: 0 }} // Left side
+                  end={{ x: 1, y: 0 }} // Right side
+                  style={styles.shieldGradientLine}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
+              Quick to Save
+            </Text>
+            <LinearGradient
+              colors={["#383252", "#4E466E"]}
+              start={{ x: 0, y: 1 }}
+              end={{ x: 0, y: 0 }}
+              style={{
+                marginTop: 10,
+                width: "100%",
+                borderRadius: 10,
+                padding: 15,
+              }}
+            >
               <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 20,
-                  padding: 15,
-                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
               >
                 <Image
-                  source={require("@/assets/images/calender.png")}
-                  style={{ width: 40, height: 40 }}
+                  source={require("@/assets/images/goldCoins.png")}
+                  style={{ width: 25, height: 25 }}
                 />
                 <Text
                   style={{
-                    color: "black",
+                    color: "rgba(255, 255, 255, 0.8)",
                     fontWeight: "bold",
-                    fontSize: 16,
-                    width: "70%",
                   }}
-                  numberOfLines={2}
                 >
-                  <Text style={{ color: "purple", fontWeight: "bold" }}>
-                    Save Daily
-                  </Text>{" "}
-                  to fulfil every small and big goal
+                  Swipe to Save in gold
                 </Text>
               </View>
+              <Text style={{ color: "rgba(255, 255, 255, 0.5)" }}>
+                Save ₹{amount} in gold instantly
+              </Text>
+
+              <View
+                style={{
+                  marginTop: 20,
+                  height: 50,
+                  width: "100%",
+                  backgroundColor: "#2E2B42",
+                  borderRadius: 25,
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexDirection: "row",
+                  paddingRight: 15,
+                }}
+              >
+                <GestureDetector gesture={panGesture}>
+                  <Animated.View style={[animatedStyle, { zIndex: 2 }]}>
+                    <GoldCoin amount={amount} />
+                  </Animated.View>
+                </GestureDetector>
+                <Image
+                  source={require("@/assets/images/locker.png")}
+                  style={{ width: 40, height: 40 }}
+                />
+              </View>
+
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  margin: 15,
-                  padding: 10,
-                  backgroundColor: "#f2ebfb",
-                  borderRadius: 12,
-                  borderColor: "rgba(46, 13, 96, 0.3)",
-                  borderWidth: 1.5,
+                  justifyContent: "space-between",
+                  marginTop: 20,
+                  width: "100%",
+                  gap: 4,
                 }}
               >
-                {["Daily", "Weekly", "Monthly"].map((item, idx) => (
+                {amountMap.map((item, idx) => (
                   <TouchableOpacity
                     key={idx}
+                    onPress={() => setAmount(item)}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "center",
                       height: 40,
-                      backgroundColor:
-                        isActiveSavings === idx ? "#fff" : "transparent",
+                      backgroundColor: "#2E2B42",
                       borderRadius: 5,
                       flex: 1,
-                      borderColor: "purple",
-                      borderWidth: isActiveSavings === idx ? 1.5 : 0,
+                      borderColor: "#5C38CC",
+                      borderWidth: 1,
                     }}
-                    onPress={() => setIsActiveSavings(idx)}
+                  >
+                    <Text style={{ color: "white" }}>₹{item}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </LinearGradient>
+          </View>
+
+          <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
+              Automate Your Savings
+            </Text>
+            <View
+              style={{
+                marginTop: 10,
+                backgroundColor: "#ebf2fa",
+                borderRadius: 15,
+              }}
+            >
+              <View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 20,
+                    padding: 15,
+                  }}
+                >
+                  <Image
+                    source={require("@/assets/images/calender.png")}
+                    style={{ width: 40, height: 40 }}
+                  />
+                  <Text
+                    style={{
+                      color: "black",
+                      fontWeight: "bold",
+                      fontSize: 16,
+                      width: "70%",
+                    }}
+                    numberOfLines={2}
+                  >
+                    <Text style={{ color: "purple", fontWeight: "bold" }}>
+                      Save Daily
+                    </Text>{" "}
+                    to fulfil every small and big goal
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    margin: 15,
+                    padding: 10,
+                    backgroundColor: "#f2ebfb",
+                    borderRadius: 12,
+                    borderColor: "rgba(46, 13, 96, 0.3)",
+                    borderWidth: 1.5,
+                  }}
+                >
+                  {["Daily", "Weekly", "Monthly"].map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: 40,
+                        backgroundColor:
+                          isActiveSavings === idx ? "#fff" : "transparent",
+                        borderRadius: 5,
+                        flex: 1,
+                        borderColor: "purple",
+                        borderWidth: isActiveSavings === idx ? 1.5 : 0,
+                      }}
+                      onPress={() => setIsActiveSavings(idx)}
+                    >
+                      <Text
+                        style={
+                          idx === isActiveSavings
+                            ? { color: "black", fontWeight: "bold" }
+                            : { color: "gray" }
+                        }
+                      >
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View
+                style={{
+                  backgroundColor: "#613dc1",
+                  borderRadius: 15,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 15,
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View style={{ width: "60%" }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={16}
+                        color="#360568"
+                      />
+                      <Text
+                        style={{
+                          color: "#360568",
+                          fontWeight: "bold",
+                          fontSize: 14,
+                        }}
+                      >
+                        Active 20 daily
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        color: "white",
+                        fontWeight: "bold",
+                        fontSize: 16,
+                      }}
+                    >
+                      Your emergency savings will grow upto 14% in 1 year
+                    </Text>
+                  </View>
+                  <Image
+                    source={require("@/assets/images/emergency.png")}
+                    style={{ width: 100, height: 100 }}
+                  />
+                </View>
+                <View style={{ padding: 15, backgroundColor: "#45147e" }}>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: 50,
+                      backgroundColor: "#fff",
+                      borderRadius: 5,
+                      flex: 1,
+                      gap: 8,
+                    }}
                   >
                     <Text
-                      style={
-                        idx === isActiveSavings
-                          ? { color: "black", fontWeight: "bold" }
-                          : { color: "gray" }
-                      }
+                      style={{
+                        color: "black",
+                        fontWeight: "bold",
+                        fontSize: 16,
+                      }}
+                    >
+                      Increase daily Savings
+                    </Text>
+                    <FontAwesome6
+                      name="arrow-right-long"
+                      size={16}
+                      color="#000"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
+              Recommendation
+            </Text>
+            <Image
+              source={require("@/assets/images/recommendation.png")}
+              style={{ objectFit: "contain", height: 150, width: "100%" }}
+            />
+          </View>
+
+          <View style={{ marginTop: 20, paddingHorizontal: 20, width: "100%" }}>
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
+              Quick Actions
+            </Text>
+            <ScrollView horizontal style={{ width: "100%" }}>
+              <FlatList
+                data={[
+                  "Refer and Earn",
+                  "Weekly Magic",
+                  "Spins",
+                  "Offers",
+                  "Spend Tracker",
+                  "More",
+                ]}
+                numColumns={3}
+                columnWrapperStyle={{
+                  justifyContent: "space-between",
+                  marginTop: 10,
+                }}
+                contentContainerStyle={{ columnGap: 20, width: width - 40 }}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={{
+                      backgroundColor: item == "More" ? "#916dd5" : "#573d7f",
+                      borderRadius: 15,
+                      overflow: "hidden",
+                      width: (width - 40) * 0.315,
+
+                      // marginHorizontal: 'auto',
+                      aspectRatio: 1,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {item !== "More" && (
+                      <Image
+                        source={require("@/assets/images/gift.png")}
+                        style={{ width: 50, height: 50 }}
+                      />
+                    )}
+                    <Text
+                      style={{
+                        color: "white",
+                        fontWeight: "bold",
+                        fontSize: item == "More" ? 16 : 12,
+                      }}
                     >
                       {item}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View
-              style={{
-                backgroundColor: "#613dc1",
-                borderRadius: 15,
-                overflow: "hidden",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 15,
-                  justifyContent: "space-between",
-                }}
-              >
-                <View style={{ width: "60%" }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 5,
-                    }}
-                  >
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color="#360568"
-                    />
-                    <Text
-                      style={{
-                        color: "#360568",
-                        fontWeight: "bold",
-                        fontSize: 14,
-                      }}
-                    >
-                      Active 20 daily
-                    </Text>
-                  </View>
-                  <Text
-                    style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
-                  >
-                    Your emergency savings will grow upto 14% in 1 year
-                  </Text>
-                </View>
-                <Image
-                  source={require("@/assets/images/emergency.png")}
-                  style={{ width: 100, height: 100 }}
-                />
-              </View>
-              <View style={{ padding: 15, backgroundColor: "#45147e" }}>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: 50,
-                    backgroundColor: "#fff",
-                    borderRadius: 5,
-                    flex: 1,
-                    gap: 8,
-                  }}
-                >
-                  <Text
-                    style={{ color: "black", fontWeight: "bold", fontSize: 16 }}
-                  >
-                    Increase daily Savings
-                  </Text>
-                  <FontAwesome6
-                    name="arrow-right-long"
-                    size={16}
-                    color="#000"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+                )}
+              />
+            </ScrollView>
           </View>
-        </View>
 
-        <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
-            Recommendation
-          </Text>
-          <Image
-            source={require("@/assets/images/recommendation.png")}
-            style={{ objectFit: "contain", height: 150, width: "100%" }}
-          />
-        </View>
+          <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
+              Know More
+            </Text>
 
-        <View style={{ marginTop: 20, paddingHorizontal: 20, width: "100%" }}>
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
-            Quick Actions
-          </Text>
-          <ScrollView horizontal style={{ width: "100%" }}>
             <FlatList
               data={[
                 "Refer and Earn",
@@ -513,120 +611,60 @@ const Home = () => {
                 "Spend Tracker",
                 "More",
               ]}
-              numColumns={3}
-              columnWrapperStyle={{
-                justifyContent: "space-between",
-                marginTop: 10,
-              }}
-              contentContainerStyle={{ columnGap: 20, width: width - 40 }}
+              horizontal
+              contentContainerStyle={{ gap: 20, marginTop: 10 }}
               renderItem={({ item, index }) => (
                 <TouchableOpacity
                   key={index}
                   style={{
-                    backgroundColor: item == "More" ? "#916dd5" : "#573d7f",
-                    borderRadius: 15,
+                    // backgroundColor: "#573d7f",
                     overflow: "hidden",
-                    width: (width - 40) * 0.315,
-
-                    // marginHorizontal: 'auto',
-                    aspectRatio: 1,
-                    alignItems: "center",
                     justifyContent: "center",
                     gap: 6,
                   }}
                 >
-                  {item !== "More" && (
-                    <Image
-                      source={require("@/assets/images/gift.png")}
-                      style={{ width: 50, height: 50 }}
-                    />
-                  )}
+                  <Image
+                    source={{
+                      uri: "https://img.freepik.com/free-vector/modern-youtube-thumbnail-with-comic-art-background_1361-2738.jpg?t=st=1741633368~exp=1741636968~hmac=518f533e78b95eee85a73e1aecf5690312147ae8bdcc9f8aae21f6ef98ca74d5&w=2000",
+                    }}
+                    style={{
+                      width: 200,
+                      // marginHorizontal: 'auto',
+                      aspectRatio: 2 / 1,
+                    }}
+                  />
                   <Text
                     style={{
                       color: "white",
                       fontWeight: "bold",
-                      fontSize: item == "More" ? 16 : 12,
+                      fontSize: 12,
+                      width: 200,
+                      marginTop: 4,
                     }}
+                    numberOfLines={1}
                   >
-                    {item}
+                    What is the process of daily saving in iGold
+                  </Text>
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.5)",
+                      fontWeight: "bold",
+                      fontSize: 12,
+                      width: 200,
+                    }}
+                    numberOfLines={1}
+                  >
+                    1 min 1 sec
                   </Text>
                 </TouchableOpacity>
               )}
             />
-          </ScrollView>
-        </View>
+          </View>
 
-        <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
-            Know More
-          </Text>
-
-          <FlatList
-            data={[
-              "Refer and Earn",
-              "Weekly Magic",
-              "Spins",
-              "Offers",
-              "Spend Tracker",
-              "More",
-            ]}
-            horizontal
-            contentContainerStyle={{ gap: 20, marginTop: 10 }}
-            renderItem={({ item, index }) => (
-              <TouchableOpacity
-                key={index}
-                style={{
-                  // backgroundColor: "#573d7f",
-                  overflow: "hidden",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                <Image
-                  source={{
-                    uri: "https://img.freepik.com/free-vector/modern-youtube-thumbnail-with-comic-art-background_1361-2738.jpg?t=st=1741633368~exp=1741636968~hmac=518f533e78b95eee85a73e1aecf5690312147ae8bdcc9f8aae21f6ef98ca74d5&w=2000",
-                  }}
-                  style={{
-                    width: 200,
-                    // marginHorizontal: 'auto',
-                    aspectRatio: 2 / 1,
-                  }}
-                />
-                <Text
-                  style={{
-                    color: "white",
-                    fontWeight: "bold",
-                    fontSize: 12,
-                    width: 200,
-                    marginTop: 4,
-                  }}
-                  numberOfLines={1}
-                >
-                  What is the process of daily saving in iGold
-                </Text>
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.5)",
-                    fontWeight: "bold",
-                    fontSize: 12,
-                    width: 200,
-                  }}
-                  numberOfLines={1}
-                >
-                  1 min 1 sec
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-
-        <View style={{ marginTop: 100 }} />
-        
-
-      </ScrollView>
-}
+          <View style={{ marginTop: 100 }} />
+        </ScrollView>
+      }
     </SafeAreaView>
-
   );
 };
 
@@ -985,6 +1023,3 @@ const styles = StyleSheet.create({
 });
 
 export default Home;
-
-
-

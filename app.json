@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.app.iGold"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +22,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.app.iGold"
+      "package": "com.app.iGold",
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -31,9 +33,6 @@
         "projectId": "340539fa-e2fb-47f7-b08d-68a79a0f7bac"
       }
     },
-    "plugins": [
-      "expo-font",
-      "expo-web-browser"
-    ]
+    "plugins": ["expo-font", "expo-web-browser", "./plugins/withRazorpay"]
   }
 }

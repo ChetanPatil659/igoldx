@@ -17,20 +17,14 @@ import { useNavigation } from "@react-navigation/native";
 const Stack = createNativeStackNavigator();
 export default function RootLayout() {
   const [loggedIn, setLoggedIn] = React.useState(false);
-  const {isAuthenticated} = useSelector((state: any) => state.auth);
-  const {user} = useSelector((state: any) => state.user);
+  const { isAuthenticated } = useSelector((state: any) => state.auth);
+  const { user } = useSelector((state: any) => state.user);
   const navigation = useNavigation();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      if(user?.userId !== ""){
+    if (!isAuthenticated) {
       navigation.navigate("Main");
-      }
-      else{
-        navigation.navigate("CompleteProfile");
-      }
-    }
-    else{
+    } else {
       navigation.navigate("Login");
     }
   }, [isAuthenticated]);
@@ -48,7 +42,10 @@ export default function RootLayout() {
       <Stack.Screen name="GoldSavings" component={GoldSaving} />
       <Stack.Screen name="SavedAddresses" component={SavedAddresses} />
       <Stack.Screen name="AddAddress" component={AddAddress} />
-      <Stack.Screen name="withdrawlScreen" component={WithdrawalOptionsScreen} />
+      <Stack.Screen
+        name="withdrawlScreen"
+        component={WithdrawalOptionsScreen}
+      />
     </Stack.Navigator>
   );
 }

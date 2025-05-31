@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   StatusBar,
 } from "react-native";
@@ -14,11 +13,12 @@ import {
   FontAwesome5,
 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function WithdrawalOptionsScreen() {
   const navigation = useNavigation();
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       {/* Header */}

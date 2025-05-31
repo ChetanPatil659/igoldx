@@ -18,14 +18,19 @@ const CompleteProfileScreen = () => {
   const navigation = useNavigation();
   const token = useSelector((state: any) => state.token.token);
   const dispatch = useDispatch();
-  
+
   // Handle profile submission
   const handleProfileSubmit = async (profileData: any) => {
-    const res = await completeProfileApi(token, profileData.fullName, profileData.zipCode);
-    if(res.success){
+    const res = await completeProfileApi(
+      token,
+      profileData.fullName,
+      profileData.zipCode
+    );
+    if (res.success) {
       dispatch(setUser(res.data));
+      navigation.replace("Main");
       return;
-    }else{
+    } else {
       Alert.alert("Error", res.error);
     }
     // if (res.data.name !== "" && res.data.pincode !== "") {
@@ -34,8 +39,6 @@ const CompleteProfileScreen = () => {
     //   return;
     // }
     console.log(res);
-    
-    navigation.replace("Main");
   };
 
   // Handle skipping profile completion
