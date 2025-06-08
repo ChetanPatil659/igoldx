@@ -14,8 +14,7 @@ import { completeProfileApi } from "@/api/auth";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "@/store/action";
 
-const CompleteProfileScreen = () => {
-  const navigation = useNavigation();
+const CompleteProfileScreen = ({ navigation }: any) => {
   const token = useSelector((state: any) => state.token.token);
   const dispatch = useDispatch();
 

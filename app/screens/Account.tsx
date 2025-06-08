@@ -17,32 +17,33 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { addAgeApi, addGenderApi, addNameApi } from "@/api/auth";
 import { logout, setUser } from "@/store/action";
-import { Picker } from '@react-native-picker/picker';
+import { Picker } from "@react-native-picker/picker";
 
 const Tab = createMaterialTopTabNavigator();
 const { width } = Dimensions.get("window");
 
 // Profile Screen Component
 function ProfileScreen() {
-  const {user} = useSelector((state: any) => state?.user);
+  const { user } = useSelector((state: any) => state?.user);
   const token = useSelector((state: any) => state?.token?.token);
   const dispatch = useDispatch();
   const navigation = useNavigation();
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedField, setSelectedField] = useState({ label: '', value: '' });
-  const [editedValue, setEditedValue] = useState('');
+  const [selectedField, setSelectedField] = useState({ label: "", value: "" });
+  const [editedValue, setEditedValue] = useState("");
   const [profileData, setProfileData] = useState({
-    "Name": "",
-    "Age": "",
-    "Gender": "",
+    Name: "",
+    Age: "",
+    Gender: "",
     "Saved Address": "",
   });
+  const { isAuthenticated } = useSelector((state: any) => state.auth);
 
   const genderOptions = [
-    { label: 'Male', value: 'male' },
-    { label: 'Female', value: 'female' },
-    { label: 'Others', value: 'others' },
-    { label: 'Prefer not to say', value: 'prefer_not_to_say' }
+    { label: "Male", value: "male" },
+    { label: "Female", value: "female" },
+    { label: "Others", value: "others" },
+    { label: "Prefer not to say", value: "prefer_not_to_say" },
   ];
 
   const handleEditProfile = (label: string, value: string) => {
@@ -51,27 +52,29 @@ function ProfileScreen() {
     setModalVisible(true);
   };
 
-  const handleSave = async() => {
+  console.log(isAuthenticated, "isAuthenticated");
+
+  const handleSave = async () => {
     // Here you would typically dispatch an action to update the user profile
     // For now, we'll just close the modal
-    setProfileData({...profileData, [selectedField.label]: editedValue});
+    setProfileData({ ...profileData, [selectedField.label]: editedValue });
 
-    switch(selectedField.label) {
+    switch (selectedField.label) {
       case "Name":
         let res = await addNameApi(token, editedValue);
-        if(res.success) {
+        if (res.success) {
           dispatch(setUser(res?.data));
         }
         break;
       case "Age":
         let resAge = await addAgeApi(token, editedValue);
-        if(resAge.success) {
+        if (resAge.success) {
           dispatch(setUser(resAge?.data));
         }
         break;
       case "Gender":
         let resGender = await addGenderApi(token, editedValue);
-        if(resGender.success) {
+        if (resGender.success) {
           dispatch(setUser(resGender?.data));
         }
         break;
@@ -93,12 +96,48 @@ function ProfileScreen() {
 
       {/* Profile Information */}
       <View style={styles.profileSection}>
-        {renderProfileItem("Name", user?.name, false, () => handleEditProfile("Name", user?.name), user?.name == "" ? false : true)}
-        {renderProfileItem("Phone", user?.phone, false, () => handleEditProfile("Phone", user?.phone), true)}
-        {renderProfileItem("Age", user?.age, false, () => handleEditProfile("Age", user?.age), false)}
-        {renderProfileItem("Gender", user?.gender, false, () => handleEditProfile("Gender", user?.gender), false)}
-        {renderProfileItem("Saved Address", user?.address?.length || 0, true, () => navigation.navigate('SavedAddresses'), false)}
-        {renderProfileItem("KYC Verification", !user?.kycVerified ? "Complete now": "✅ Verified", !user?.kycVerified, () => {}, false)}
+        {renderProfileItem(
+          "Name",
+          user?.name,
+          false,
+          () => handleEditProfile("Name", user?.name),
+          user?.name == "" ? false : true
+        )}
+        {renderProfileItem(
+          "Phone",
+          user?.phone,
+          false,
+          () => handleEditProfile("Phone", user?.phone),
+          true
+        )}
+        {renderProfileItem(
+          "Age",
+          user?.age,
+          false,
+          () => handleEditProfile("Age", user?.age),
+          false
+        )}
+        {renderProfileItem(
+          "Gender",
+          user?.gender,
+          false,
+          () => handleEditProfile("Gender", user?.gender),
+          false
+        )}
+        {renderProfileItem(
+          "Saved Address",
+          user?.address?.length || 0,
+          true,
+          () => navigation.navigate("SavedAddresses"),
+          false
+        )}
+        {renderProfileItem(
+          "KYC Verification",
+          !user?.kycVerified ? "Complete now" : "✅ Verified",
+          !user?.kycVerified,
+          () => {},
+          false
+        )}
       </View>
 
       {/* Edit Profile Modal */}
@@ -115,19 +154,21 @@ function ProfileScreen() {
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={editedValue}
-                  onValueChange={(itemValue: string) => setEditedValue(itemValue)}
+                  onValueChange={(itemValue: string) =>
+                    setEditedValue(itemValue)
+                  }
                   style={styles.picker}
                   dropdownIconColor="#6b46c1"
                   mode="dropdown"
                   itemStyle={styles.pickerItem}
                 >
                   {genderOptions.map((option) => (
-                    <Picker.Item 
-                      key={option.value} 
-                      label={option.label} 
+                    <Picker.Item
+                      key={option.value}
+                      label={option.label}
                       value={option.value}
                       color="white"
-                      style={{backgroundColor: '#2a2a3c'}}
+                      style={{ backgroundColor: "#2a2a3c" }}
                     />
                   ))}
                 </Picker>
@@ -305,10 +346,13 @@ const renderProfileItem = (
   value: string,
   showChevron = false,
   onPress?: () => void,
-  disabled?: boolean,
-
+  disabled?: boolean
 ) => (
-  <TouchableOpacity style={styles.profileItem} onPress={onPress} disabled={disabled}>
+  <TouchableOpacity
+    style={styles.profileItem}
+    onPress={onPress}
+    disabled={disabled}
+  >
     <Text style={styles.profileLabel}>{label}</Text>
     <View style={styles.profileValueContainer}>
       <Text style={styles.profileValue}>{value}</Text>
@@ -495,75 +539,74 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: '#2a2a3c',
+    backgroundColor: "#2a2a3c",
     borderRadius: 20,
     padding: 20,
-    width: '80%',
-    alignItems: 'center',
+    width: "80%",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#3a3a4c',
+    borderColor: "#3a3a4c",
   },
   modalTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
   },
   modalInput: {
-    backgroundColor: '#3a3a4c',
+    backgroundColor: "#3a3a4c",
     borderRadius: 10,
     padding: 15,
-    width: '100%',
-    color: 'white',
+    width: "100%",
+    color: "white",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#6b46c1',
+    borderColor: "#6b46c1",
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
   modalButton: {
     padding: 15,
     borderRadius: 10,
-    width: '45%',
-    alignItems: 'center',
+    width: "45%",
+    alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: '#3a3a4c',
+    backgroundColor: "#3a3a4c",
   },
   saveButton: {
-    backgroundColor: '#6b46c1',
+    backgroundColor: "#6b46c1",
   },
   modalButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   pickerContainer: {
-    backgroundColor: '#3a3a4c',
+    backgroundColor: "#3a3a4c",
     borderRadius: 10,
-    width: '100%',
+    width: "100%",
     marginBottom: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#6b46c1',
+    borderColor: "#6b46c1",
   },
   picker: {
-    color: 'white',
+    color: "white",
     height: 50,
-    backgroundColor: '#3a3a4c',
+    backgroundColor: "#3a3a4c",
   },
   pickerItem: {
     fontSize: 16,
-    color: 'white',
-    backgroundColor: '#2a2a3c',
+    color: "white",
+    backgroundColor: "#2a2a3c",
   },
 });
-

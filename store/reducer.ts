@@ -1,5 +1,12 @@
 import { combineReducers } from "redux";
-import { LOGIN, LOGOUT, SET_BALANCE, SET_TOKEN, SET_USER } from "./action";
+import {
+  LOGIN,
+  LOGOUT,
+  SET_BALANCE,
+  SET_IS_AUTHENTICATED,
+  SET_TOKEN,
+  SET_USER,
+} from "./action";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const initialState = {
@@ -25,7 +32,7 @@ const userReducer = (state = initialState, action: any) => {
 
     case LOGOUT:
       return { ...state, user: null };
-      
+
     default:
       return state;
   }

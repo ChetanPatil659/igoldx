@@ -219,6 +219,58 @@ export async function buyGoldConfirmApi(token, tx_id) {
   }
 }
 
+export async function fetchSellGoldPriceApi() {
+  try {
+    const res = await Client.get("/gold/gold-sell-price");
+    return res.data;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+
+export async function sellGoldApi(token, rate_id, gold_amount, sell_price) {
+  try {
+    const res = await Client.post(
+      "/gold/gold-sell-verify",
+      {
+        rate_id,
+        gold_amount,
+        sell_price,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+
+export async function sellGoldConfirmApi(token, tx_id) {
+  try {
+    const res = await Client.post(
+      "/gold/gold-sell-confirm",
+      {
+        tx_id,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (error) {
+    console.log(error);
+    return error;
+  }
+}
+
 export async function fetchTransactionApi(token) {
   try {
     const res = await Client.get("/gold/transaction-history", {

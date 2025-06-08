@@ -202,7 +202,7 @@ const Home = () => {
                         ) ?? 0}
                       </Text>
                       <Text style={styles.gramText}>
-                        {parseFloat(user?.sellableBalance).toFixed(2) ?? 0}gms
+                        {parseFloat(user?.sellableBalance).toFixed(4) ?? 0}gms
                       </Text>
                     </View>
 

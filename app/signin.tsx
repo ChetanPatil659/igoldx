@@ -61,13 +61,13 @@ const SigninScreen = () => {
       dispatch(setToken(res.token));
       console.log(res.data.name !== "", "jjnjnnhnhnhnnhnhn============");
 
-      if (res.data.name === "") {
-        console.log("false============");
-        navigation.navigate("CompleteProfile");
-      } else {
-        console.log("true============");
-        navigation.replace("CompleteProfile");
-      }
+      // if (res.data.name === "") {
+      //   console.log("false============");
+      //   navigation.navigate("CompleteProfile");
+      // } else {
+      //   console.log("true============");
+      //   navigation.navigate("Main");
+      // }
     } finally {
       setIsLoading(false);
     }

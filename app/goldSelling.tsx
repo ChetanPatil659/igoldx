@@ -21,19 +21,13 @@ import {
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  buyGoldApi,
-  buyGoldConfirmApi,
-  fetchBalanceApi,
-  fetchGoldPriceApi,
-  fetchTransactionApi,
-  fetchUserApi,
+  sellGoldApi,
+  sellGoldConfirmApi,
+  fetchSellGoldPriceApi,
 } from "@/api/auth";
 import { initiatePayment } from "@/helper/razorpay";
 import { sendTestNotificationWithImage } from "@/hooks/usePushNotifications";
-import { useSelector, useDispatch } from "react-redux";
-import RazorpayCheckout from "react-native-razorpay";
-import { URL } from "@/api/client";
-import { setUser } from "@/store/action";
+import { useSelector } from "react-redux";
 
 interface GoldPrice {
   current_price: number;
@@ -50,7 +44,7 @@ type GoldSavingRouteProp = RouteProp<
   "GoldSaving"
 >;
 
-export default function GoldSaving() {
+export default function GoldSelling() {
   const route = useRoute<GoldSavingRouteProp>();
   const data = route.params;
   const [amount, setAmount] = useState(data?.amount || "0");
@@ -66,27 +60,8 @@ export default function GoldSaving() {
   const [autoPayFrequency, setAutoPayFrequency] = useState<
     "daily" | "weekly" | "monthly"
   >("monthly");
-  const dispatch = useDispatch();
-
-  const [loading, setLoading] = useState(false);
 
   const token = useSelector((state: any) => state.token.token);
-
-  const calculateGramAmount = (amountValue: string) => {
-    if (!goldPrice?.current_price) return;
-    const grams = (
-      parseFloat(amountValue || "0") /
-      (goldPrice.current_price * 1.03)
-    ).toFixed(4);
-    setGramAmount(grams);
-  };
-
-  // Calculate gramAmount when goldPrice is available and amount is set from params
-  useEffect(() => {
-    if (goldPrice?.current_price) {
-      calculateGramAmount(amount);
-    }
-  }, [goldPrice, amount]);
 
   // Timer countdown effect
   useEffect(() => {
@@ -104,11 +79,10 @@ export default function GoldSaving() {
   }, [timeLeft]);
 
   const fetchGoldPrice = async () => {
-    const res = await fetchGoldPriceApi();
+    const res = await fetchSellGoldPriceApi();
     if (res.success) {
       setGoldPrice(res?.data);
     }
-    // await sendTestNotificationWithImage();
   };
   useEffect(() => {
     fetchGoldPrice();
@@ -160,189 +134,45 @@ export default function GoldSaving() {
     }
   };
 
-  const createPaymentOrder = async (amount: any) => {
-    try {
-      const response = await fetch(`${URL}/payments/create-order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: parseFloat(amount.toString()),
-          currency: "INR",
-        }),
-      });
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || "Failed to create order");
-      }
-      return data;
-    } catch (error) {
-      console.error("Error creating order:", error);
-      throw error;
-    }
-  };
-
-  const verifyPaymentOnServer = async (paymentData: any) => {
-    try {
-      const response = await fetch(`${URL}/payments/verify-payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(paymentData),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error("Error verifying payment:", error);
-      throw error;
-    }
-  };
-
-  const processRazorpayPayment = async (orderData: any) => {
-    if (!RazorpayCheckout) {
-      throw new Error(
-        "Razorpay checkout not available. Please ensure react-native-razorpay is properly installed and linked."
-      );
-    }
-
-    const options = {
-      description: "Gold Purchase",
-      image:
-        "https://th.bing.com/th/id/OIP.XrGVljajcLZhvJGUD-Sc7gHaE7?rs=1&pid=ImgDetMain",
-      currency: orderData.data.currency,
-      key: "rzp_test_e0bHG6zomo3CEo",
-      amount: orderData.data.amount,
-      order_id: orderData.data.id,
-      name: "I-Gold",
-      prefill: {
-        email: "patilchetan659@gmail.com",
-        contact: "7648954968",
-        name: "Chetan Patil",
-      },
-      theme: { color: "#3399cc" },
-    };
-
-    return await RazorpayCheckout.open(options);
-  };
-
-  const getErrorMessage = (error: any) => {
-    const errorMap: any = {
-      payment_cancelled: {
-        title: "Payment Cancelled",
-        message: "You cancelled the payment",
-      },
-      payment_failed: {
-        title: "Payment Failed",
-        message: error.description || "Payment was not successful",
-      },
-    };
-
-    return (
-      errorMap[error?.code] || {
-        title: "Error",
-        message: error?.message || "Something went wrong. Please try again.",
-      }
-    );
-  };
-
-  // Main payment handler
   const handlePayment = async () => {
-    console.log(gramAmount, amount);
-    if (isProcessingPayment || loading) return;
     try {
       setIsProcessingPayment(true);
 
-      // Step 1: Initiate gold purchase
-      const goldPurchaseRes = await buyGoldApi(
+      console.log(gramAmount);
+
+      const res = await sellGoldApi(
         token,
         goldPrice?.rate_id,
         parseFloat(gramAmount),
         parseFloat(amount)
       );
 
-      if (!goldPurchaseRes.success) {
-        throw new Error("Failed to initiate gold purchase");
-      } else {
-        const paymentResult = await processPayment(
-          goldPurchaseRes.data.buy_price,
-          goldPurchaseRes.data.tx_id
-        );
-      }
+      console.log(res, "res");
 
-      // Step 2: Show confirmation dialog
-      // const shouldProceed = await new Promise((resolve) => {
-      //   Alert.alert(
-      //     "Confirm Purchase",
-      //     `Are you sure you want to purchase ${gramAmount} grams of gold for ₹${amount}?`,
-      //     [
-      //       { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-      //       { text: "Confirm", onPress: () => resolve(true) }
-      //     ]
-      //   );
-      // });
-
-      // if (!shouldProceed) return;
-
-      // Step 4: Process payment
-
-      // Alert.alert("Success", "Gold purchase completed successfully!");
+      Alert.alert(
+        "Confirm Purchase",
+        `Are you sure you want to purchase ${gramAmount} grams of gold for ₹${amount}?`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Confirm",
+            onPress: async () => {
+              const paymentResult = await sellGoldConfirmApi(
+                token,
+                res?.data?.tx_id
+              );
+            },
+          },
+        ]
+      );
     } catch (error) {
       console.error("Payment error:", error);
-      const { title, message } = getErrorMessage(error);
-      Alert.alert(title, message);
+      Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsProcessingPayment(false);
-    }
-  };
-
-  const processPayment = async (amount: any, tx_id: any) => {
-    const buyPrice = amount;
-
-    if (!buyPrice || parseFloat(buyPrice.toString()) <= 0) {
-      throw new Error("Invalid purchase amount or invoice id");
-    }
-
-    setLoading(true);
-
-    try {
-      // Create payment order
-      const orderData = await createPaymentOrder(buyPrice);
-
-      if (!orderData.success) {
-        throw new Error("Failed to create order");
-      }
-      // Process Razorpay payment
-      const paymentResult = await processRazorpayPayment(orderData);
-
-      // Verify payment
-      const verificationResult = await verifyPaymentOnServer({
-        razorpay_order_id: paymentResult.razorpay_order_id,
-        razorpay_payment_id: paymentResult.razorpay_payment_id,
-        razorpay_signature: paymentResult.razorpay_signature,
-      });
-
-      if (!verificationResult.success) {
-        throw new Error("Payment verification failed");
-      } else {
-        const confirmRes = await buyGoldConfirmApi(token, tx_id);
-
-        if (!confirmRes.success) {
-          throw new Error("Failed to confirm gold purchase");
-        } else {
-          const userRes = await fetchUserApi(token);
-          const transactionRes = await fetchTransactionApi(token);
-
-          if (!userRes.success) {
-            throw new Error("Failed to fetch balance");
-          } else {
-            dispatch(setUser(userRes.data));
-
-            navigation.navigate("Main");
-          }
-        }
-      }
-
-      return verificationResult;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -610,7 +440,7 @@ export default function GoldSaving() {
         </View>
 
         <View style={styles.paymentMethodContainer}>
-          {/* <View style={styles.paymentMethod}>
+          <View style={styles.paymentMethod}>
             <View style={styles.phonepeIcon}>
               <Text style={styles.phonepeText}>P</Text>
             </View>
@@ -624,7 +454,7 @@ export default function GoldSaving() {
               color="#a8a8a8"
               style={{ marginLeft: 10 }}
             />
-          </View> */}
+          </View>
 
           <TouchableOpacity
             onPress={handlePayment}
@@ -990,7 +820,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    width: "100%",
   },
   buyButtonText: {
     color: "white",

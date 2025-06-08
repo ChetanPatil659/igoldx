@@ -3,6 +3,7 @@ export const LOGIN = "LOGIN";
 export const LOGOUT = "LOGOUT";
 export const SET_TOKEN = "SET_TOKEN";
 export const SET_BALANCE = "SET_BALANCE";
+export const SET_IS_AUTHENTICATED = "SET_IS_AUTHENTICATED";
 
 export const setUser = (user: any) => ({
   type: SET_USER,

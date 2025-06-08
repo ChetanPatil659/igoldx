@@ -14,6 +14,7 @@ import WithdrawalOptionsScreen from "../withdrawlScreen";
 import Home from "../screens/Home";
 import { useSelector } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
+import GoldSelling from "../goldSelling";
 const Stack = createNativeStackNavigator();
 export default function RootLayout() {
   const [loggedIn, setLoggedIn] = React.useState(false);
@@ -22,7 +23,11 @@ export default function RootLayout() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isAuthenticated && !isNaN(user.phone)) {
+      if (!user.name && user.name == "") {
+        navigation.navigate("CompleteProfile");
+        return;
+      }
       navigation.navigate("Main");
     } else {
       navigation.navigate("Login");
@@ -42,10 +47,7 @@ export default function RootLayout() {
       <Stack.Screen name="GoldSavings" component={GoldSaving} />
       <Stack.Screen name="SavedAddresses" component={SavedAddresses} />
       <Stack.Screen name="AddAddress" component={AddAddress} />
-      <Stack.Screen
-        name="withdrawlScreen"
-        component={WithdrawalOptionsScreen}
-      />
+      <Stack.Screen name="withdrawlScreen" component={GoldSelling} />
     </Stack.Navigator>
   );
 }

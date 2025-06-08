@@ -10,6 +10,8 @@ import {
   Platform,
   FlatList,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -77,65 +79,10 @@ export default function Transaction() {
     </View>
   );
 
-  const transaction = [
-    {
-      id: "1",
-      type: "Daily Saving",
-      amount: "₹10.00",
-      goldAmount: "0.001 gm Gold",
-      status: "Success",
-      date: "13 Mar '25, 04:34am",
-      icon: "building",
-    },
-    {
-      id: "2",
-      type: "Daily Saving",
-      amount: "₹10.00",
-      goldAmount: "0.001 gm Gold",
-      status: "Success",
-      date: "12 Mar '25, 03:54am",
-      icon: "building",
-    },
-    {
-      id: "3",
-      type: "Daily Saving",
-      amount: "₹10.00",
-      goldAmount: "0.001 gm Gold",
-      status: "Success",
-      date: "11 Mar '25, 04:41am",
-      icon: "building",
-    },
-    {
-      id: "4",
-      type: "Daily Saving",
-      amount: "₹10.00",
-      goldAmount: "0.001 gm Gold",
-      status: "Success",
-      date: "10 Mar '25, 04:00pm",
-      icon: "building",
-    },
-    {
-      id: "5",
-      type: "Weekly Magic Reward",
-      amount: "₹2.00",
-      goldAmount: "0.0002 gm Gold",
-      status: "Success",
-      date: "10 Mar '25, 07:43am",
-      icon: "magic",
-    },
-    {
-      id: "6",
-      type: "Instant Saving",
-      amount: "₹52.50",
-      goldAmount: "0.0057 gm Gold",
-      status: "Success",
-      date: "10 Mar '25, 07:43am",
-      icon: "gold",
-    },
-  ];
-
   const [transactions, setTransactions] = useState([]);
   const token = useSelector((state: any) => state.token.token);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const getIconStyle = (type) => {
     if (type === "Weekly Magic Reward") {
@@ -148,11 +95,19 @@ export default function Transaction() {
   };
 
   const fetchTransactions = async () => {
+    setLoading(true);
     const res = await fetchTransactionApi(token);
     if (res.success) {
       setTransactions(res?.data?.transactions);
     }
+    setLoading(false);
   };
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchTransactions().finally(() => setRefreshing(false));
+  }, []);
+
   useEffect(() => {
     fetchTransactions();
   }, []);
@@ -177,6 +132,16 @@ export default function Transaction() {
   function GoldScreen() {
     return (
       <SafeAreaView style={styles.container}>
+        {loading && (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              { flex: 1, justifyContent: "center", alignItems: "center" },
+            ]}
+          >
+            <ActivityIndicator size="large" color="#fff" />
+          </View>
+        )}
         <View style={styles.historyHeader}>
           <Text style={styles.historyTitle}>History</Text>
           <View style={styles.historyActions}>
@@ -190,12 +155,26 @@ export default function Transaction() {
             </TouchableOpacity>
           </View>
         </View>
-        <FlatList
-          data={transactions}
-          renderItem={({ item }) => <TransactionItem item={item} />}
-          keyExtractor={(item) => item.tx_id}
-          style={{ paddingHorizontal: 10 }}
-        />
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#1e1a2e"]}
+              tintColor="#fff"
+            />
+          }
+        >
+          <ScrollView horizontal style={{ width: width, flex: 1 }}>
+            <FlatList
+              data={transactions.reverse()}
+              renderItem={({ item }) => <TransactionItem item={item} />}
+              keyExtractor={(item) => item.tx_id}
+              style={{ paddingHorizontal: 10, width: width }}
+            />
+          </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -598,6 +577,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "500",
+    textTransform: "capitalize",
   },
   goldAmount: {
     color: "#8e8e9a",
